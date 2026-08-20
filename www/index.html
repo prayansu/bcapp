@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BroCode?</title>
+<style>
+  :root { --bg:#171717; --panel:#262626; --panel-soft:#202020; --text:#e5e5e5; --muted:#a3a3a3; --line:#404040; --lime:#a3e635; --lime-dark:#84cc16; --header-bg:rgba(23,23,23,.85); }
+  html[data-theme="light"] { --bg:#f4f4f3; --panel:#ffffff; --panel-soft:#ececea; --text:#1c1c1c; --muted:#5f5f5f; --line:#dcdcdc; --lime:#4d7c0f; --lime-dark:#3f6212; --header-bg:rgba(255,255,255,.85); }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family: ui-rounded, "Trebuchet MS", sans-serif; transition:background .2s ease, color .2s ease; }
+
+  /* themed page scrollbar instead of the browser default */
+  html { scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--line); border-radius:8px; border:2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+  button, input, textarea { font: inherit; }
+  button { border:0; cursor:pointer; }
+  .shell { min-height:100vh; display:flex; flex-direction:column; }
+  header { position:sticky; top:0; z-index:2; height:80px; background:var(--header-bg); border-bottom:1px solid rgba(115,115,115,.28); backdrop-filter:blur(16px); }
+  .header-inner, main { width:min(100% - 48px, 900px); margin:auto; }
+  .header-inner { height:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  h1 { margin:0; font-size:clamp(1.5rem, 6vw, 2.5rem); letter-spacing:-.04em; color:var(--lime); white-space:nowrap; }
+  .header-actions { display:flex; align-items:center; gap:10px; }
+  .about { padding:10px 16px; font-weight:700; color:var(--text); background:var(--panel-soft); border-radius:10px; transition:.2s ease; white-space:nowrap; }
+  .about:hover { background:var(--line); }
+
+  /* theme toggle */
+  .theme { position:relative; display:flex; align-items:center; justify-content:center; width:44px; height:38px; border-radius:10px; color:var(--text); background:var(--panel-soft); cursor:pointer; transition:.2s ease; flex:0 0 auto; }
+  .theme:hover { background:var(--line); }
+  .theme:has(.theme-input:focus-visible) { outline:2px solid var(--lime); outline-offset:2px; }
+  .theme .theme-input { position:absolute; width:1px; height:1px; opacity:0; }
+  .theme .icon { position:absolute; width:21px; height:21px; transition:.2s ease; }
+  .theme .icon-sun { opacity:1; transform:rotate(0); }
+  .theme .icon-moon { opacity:0; transform:rotate(-90deg); }
+  html[data-theme="light"] .theme .icon-sun { opacity:0; transform:rotate(90deg); }
+  html[data-theme="light"] .theme .icon-moon { opacity:1; transform:rotate(0); }
+
+  main { flex:1; display:flex; gap:24px; padding:32px 0; }
+  .workspace { flex:1; min-width:0; display:flex; flex-direction:column; gap:0; }
+
+  /* draft tabs — flush against the editor below, no gap */
+  .tabs { display:flex; align-items:flex-end; gap:4px; overflow-x:auto; scrollbar-width:thin; border-bottom:1px solid var(--line); padding-left:2px; }
+  .tab-btn { display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius:10px 10px 0 0; background:var(--panel-soft); color:var(--muted); font-size:.82rem; font-weight:700; white-space:nowrap; border:1px solid var(--line); border-bottom:1px solid var(--line); margin-bottom:-1px; }
+  .tab-btn.active { background:var(--panel); color:var(--text); border-bottom-color:var(--panel); }
+  .tab-close { display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:5px; color:inherit; background:transparent; font-size:.85rem; line-height:1; }
+  .tab-close:hover { background:#88888840; }
+  .tab-add { padding:9px 13px; border-radius:10px 10px 0 0; background:var(--panel-soft); color:var(--muted); font-weight:800; border:1px dashed var(--line); border-bottom:1px solid var(--line); margin-bottom:-1px; }
+  .tab-add:hover { color:var(--text); border-color:var(--lime-dark); }
+
+  .editor { position:relative; flex:1; min-height:350px; }
+  textarea { width:100%; height:100%; min-height:350px; border:1px solid var(--line); border-top:none; border-radius:0 0 12px 12px; background:var(--panel); color:var(--text); outline:none; resize:none; padding:18px; font-family:Consolas,monospace; font-size:1rem; transition:background .2s ease, border-color .2s ease; }
+  textarea:focus { border-color:var(--lime-dark); }
+  textarea::placeholder { color:#737373; }
+  .copy { position:absolute; top:12px; right:12px; padding:9px 12px; font-size:.78rem; font-weight:700; color:var(--text); background:var(--panel-soft); border-radius:10px; }
+  .copy:hover { background:var(--line); }
+  .copy:disabled, #send:disabled { cursor:not-allowed; opacity:.45; box-shadow:none; }
+  .side { width:300px; }
+  .card { position:sticky; top:104px; display:flex; flex-direction:column; gap:16px; padding:24px; border:1px solid var(--line); border-radius:16px; background:var(--panel); box-shadow:0 18px 45px #0005; transition:background .2s ease, border-color .2s ease; }
+  label { color:var(--muted); font-size:.85rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+  #code { width:100%; height:80px; border:2px solid transparent; border-radius:12px; background:var(--panel-soft); color:var(--text); text-align:center; font-size:clamp(1.9rem, 8vw, 3rem); font-weight:800; letter-spacing:.35em; outline:none; text-transform:uppercase; margin-top:8px; }
+  #code:focus { border-color:var(--lime); }
+  .hint { margin:8px 0 0; color:var(--muted); font-size:.78rem; text-align:center; }
+  .rule { height:1px; background:var(--line); margin:2px 0; }
+  #send { padding:13px 24px; border-radius:12px; background:var(--lime); color:#1a2e05; font-size:1.05rem; font-weight:800; box-shadow:0 8px 22px #84cc164d; }
+  #send:hover { background:var(--lime-dark); }
+
+  /* big generated code, shown right where the code is entered */
+  .big-code { width:100%; padding:20px 8px; margin-top:8px; border-radius:12px; background:var(--panel-soft); border:2px solid var(--lime-dark); color:var(--lime); text-align:center; font-size:clamp(1.9rem, 8vw, 2.9rem); font-weight:800; letter-spacing:.35em; animation:pop .25s ease; }
+  @keyframes pop { from { transform:scale(.9); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .copy-code { width:100%; padding:11px; border-radius:10px; background:var(--panel-soft); color:var(--text); font-weight:700; }
+  .copy-code:hover { background:var(--line); }
+  .secondary { width:100%; padding:12px; border-radius:12px; background:transparent; border:2px dashed var(--line); color:var(--muted); font-weight:800; }
+  .secondary:hover { border-color:var(--lime-dark); color:var(--text); }
+
+  #toast { position:fixed; z-index:5; bottom:32px; left:50%; max-width:calc(100% - 32px); transform:translateX(-50%) translateY(12px); padding:12px 22px; border-radius:999px; color:#ecfccb; background:#365314; box-shadow:0 12px 30px #0007; opacity:0; pointer-events:none; transition:.2s ease; text-align:center; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast.error { color:#fee2e2; background:#7f1d1d; }
+  dialog { width:min(100% - 32px, 430px); border:0; border-radius:16px; padding:32px; color:var(--text); background:var(--panel); box-shadow:0 24px 80px #0009; }
+  dialog::backdrop { background:#0009; backdrop-filter:blur(5px); }
+  dialog h2 { margin:0 0 16px; color:var(--lime); }
+  dialog p { color:var(--muted); line-height:1.6; }
+  .dialog-footer { margin-top:18px; padding-top:14px; border-top:1px solid var(--line); text-align:right; color:var(--muted); font-size:.85rem; font-style:italic; }
+  .close { float:right; color:var(--muted); background:transparent; font-size:1.4rem; }
+
+  /* history — edge handle + slide-out drawer */
+  .history-handle { position:fixed; top:50%; right:0; transform:translateY(-50%); width:26px; height:64px; border-radius:32px 0 0 32px; background:var(--panel); border:1px solid var(--line); border-right:none; color:var(--muted); align-items:center; justify-content:center; box-shadow:-6px 0 16px #00000030; z-index:6; transition:right .25s ease, color .2s ease, background .2s ease; display:flex; }
+  .history-handle:hover { color:var(--text); background:var(--panel-soft); }
+  .history-handle svg { width:14px; height:14px; transition:transform .25s ease; }
+  .history-handle.open { right:320px; }
+  .history-handle.open svg { transform:rotate(180deg); }
+
+  .history-overlay { position:fixed; inset:0; background:#000000b3; opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:4; }
+  .history-overlay.show { opacity:1; pointer-events:auto; }
+
+  .history-drawer { position:fixed; top:0; right:-340px; width:320px; max-width:88vw; height:100%; background:var(--panel); border-left:1px solid var(--line); box-shadow:-14px 0 40px #00000050; z-index:5; display:flex; flex-direction:column; padding:22px 18px; transition:right .25s ease, background .2s ease, border-color .2s ease; }
+  .history-drawer.open { right:0; }
+  .history-drawer-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex:0 0 auto; }
+  .history-drawer-head h2 { margin:0; font-size:1.1rem; color:var(--text); }
+  .drawer-close { background:transparent; color:var(--muted); font-size:1.5rem; line-height:1; padding:2px 6px; border-radius:8px; }
+  .drawer-close:hover { color:var(--text); background:var(--panel-soft); }
+  .clear-history { flex:0 0 auto; margin-top:14px; width:100%; padding:10px; font-size:.8rem; font-weight:700; color:var(--muted); background:var(--panel-soft); border-radius:10px; }
+  .clear-history:hover { color:var(--text); background:var(--line); }
+  .history-list { display:flex; flex-direction:column; gap:10px; overflow-y:auto; flex:1 1 auto; }
+  .history-item { position:relative; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); display:flex; flex-direction:column; gap:6px; cursor:pointer; transition:.15s ease; text-align:left; width:100%; }
+  .history-item:hover { border-color:var(--lime-dark); }
+  .h-code { font-weight:800; letter-spacing:.25em; color:var(--lime); font-size:1rem; padding-right:16px; }
+  .h-preview { margin:0; font-size:.82rem; color:var(--muted); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word; }
+  .h-time { font-size:.7rem; color:var(--muted); opacity:.75; }
+  .h-del { position:absolute; top:10px; right:10px; width:20px; height:20px; border-radius:50%; background:transparent; color:var(--muted); font-size:.9rem; display:flex; align-items:center; justify-content:center; }
+  .h-del:hover { background:#88888840; color:var(--text); }
+  .history-empty { color:var(--muted); font-size:.88rem; }
+
+  @media (max-width:760px) {
+    .header-inner, main { width:min(100% - 32px, 560px); }
+    main { flex-direction:column; padding:20px 0; }
+    .side { width:auto; }
+    .card { position:static; }
+    .editor, textarea { min-height:280px; }
+  }
+  @media (max-width:420px) {
+    header { height:72px; }
+    .about { padding:8px 12px; font-size:.85rem; }
+    .theme { width:38px; height:34px; }
+    .theme .icon { width:18px; height:18px; }
+    h1 { font-size:1.35rem; }
+    .card { padding:18px; }
+    .history-handle { width:22px; height:56px; }
+    .history-handle.open { right:88vw; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header><div class="header-inner">
+    <h1>BroCode?</h1>
+    <div class="header-actions">
+      <button class="about" id="about">About</button>
+      <label class="theme" title="Toggle light and dark theme">
+        <input class="theme-input" id="themeToggle" type="checkbox" aria-label="Toggle light and dark theme">
+        <svg width="24" viewBox="0 0 24 24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke="currentColor" height="24" fill="none" class="icon icon-sun">
+          <circle r="5" cy="12" cx="12"></circle>
+          <line y2="3" y1="1" x2="12" x1="12"></line>
+          <line y2="23" y1="21" x2="12" x1="12"></line>
+          <line y2="5.64" y1="4.22" x2="5.64" x1="4.22"></line>
+          <line y2="19.78" y1="18.36" x2="19.78" x1="18.36"></line>
+          <line y2="12" y1="12" x2="3" x1="1"></line>
+          <line y2="12" y1="12" x2="23" x1="21"></line>
+          <line y2="18.36" y1="19.78" x2="5.64" x1="4.22"></line>
+          <line y2="4.22" y1="5.64" x2="19.78" x1="18.36"></line>
+        </svg>
+        <svg viewBox="0 0 24 24" class="icon icon-moon" aria-hidden="true" fill="currentColor">
+          <path d="m12.3 4.9c.4-.2.6-.7.5-1.1s-.6-.8-1.1-.8c-4.9.1-8.7 4.1-8.7 9 0 5 4 9 9 9 3.8 0 7.1-2.4 8.4-5.9.2-.4 0-.9-.4-1.2s-.9-.2-1.2.1c-1 .9-2.3 1.4-3.7 1.4-3.1 0-5.7-2.5-5.7-5.7 0-1.9 1.1-3.8 2.9-4.8zm2.8 12.5c.5 0 1 0 1.4-.1-1.2 1.1-2.8 1.7-4.5 1.7-3.9 0-7-3.1-7-7 0-2.5 1.4-4.8 3.5-6-.7 1.1-1 2.4-1 3.8-.1 4.2 3.4 7.6 7.6 7.6z"></path>
+        </svg>
+      </label>
+    </div>
+  </div></header>
+  <main>
+    <section class="workspace">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Drafts">
+        <button class="tab-add" id="addTab" type="button" title="Compose another note in a new tab" aria-label="New draft tab">+</button>
+      </div>
+      <div class="editor">
+        <textarea id="text" placeholder="Paste your code or text here..."></textarea>
+        <button class="copy" id="copy" disabled>Copy</button>
+      </div>
+    </section>
+    <aside class="side"><div class="card" id="sendCard">
+      <div id="receiveMode">
+        <label for="code">Retrieval Code</label>
+        <input id="code" maxlength="3" placeholder="---" autocomplete="off">
+        <p class="hint" id="hint">Enter a 3-character code to receive</p>
+      </div>
+      <div id="sentMode" hidden>
+        <label>Your Code</label>
+        <div class="big-code" id="bigCode">---</div>
+        <p class="hint">Share this &mdash; expires in 5 min</p>
+        <button class="copy-code" id="copyCode" type="button">Copy code</button>
+      </div>
+      <div class="rule"></div>
+      <button id="send" disabled>Send</button>
+      <button class="secondary" id="newBtn" type="button" hidden>+ Send another</button>
+    </div></aside>
+  </main>
+</div>
+<button class="history-handle" id="historyHandle" aria-label="Open recent notes" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"></polyline></svg>
+</button>
+<div class="history-overlay" id="historyOverlay"></div>
+<aside class="history-drawer" id="historyDrawer" aria-hidden="true">
+  <div class="history-drawer-head">
+    <h2>Recent notes</h2>
+    <button class="drawer-close" id="closeHistory" aria-label="Close">&times;</button>
+  </div>
+  <div class="history-list" id="historyList">
+    <p class="history-empty" id="historyEmpty">No notes sent yet on this device.</p>
+  </div>
+  <button class="clear-history" id="clearHistory" type="button">Clear all</button>
+</aside>
+<div id="toast"></div>
+<dialog id="aboutDialog">
+  <button class="close" id="close" aria-label="Close">&times;</button>
+  <h2>About Bro Code</h2>
+  <p>A minimal online clipboard. Paste text, hit Send, and share the 3-character code with someone else. It expires 5 minutes after saving, and is deleted the moment it's retrieved.</p>
+  <p>Your "Recent notes" history is saved only in this browser, on this device, so you can find things you've sent before &mdash; it isn't sent anywhere.</p>
+  <div class="dialog-footer">-shuzers</div>
+</dialog>
+<script>
+  // Point this at your deployed Cloudflare Worker URL (from `wrangler deploy`).
+  const API_BASE = 'https://brocode-api.shuzers.workers.dev';
+  const HISTORY_KEY = 'brocode_history';
+  const THEME_KEY = 'brocode_theme';
+  const MAX_TABS = 6;
+
+  const text = document.getElementById('text'), copy = document.getElementById('copy'), send = document.getElementById('send');
+  const codeInput = document.getElementById('code'), hint = document.getElementById('hint');
+  const receiveMode = document.getElementById('receiveMode'), sentMode = document.getElementById('sentMode');
+  const bigCode = document.getElementById('bigCode'), copyCode = document.getElementById('copyCode'), newBtn = document.getElementById('newBtn');
+  const tabsWrap = document.getElementById('tabs'), addTabBtn = document.getElementById('addTab');
+  const historyList = document.getElementById('historyList'), historyEmpty = document.getElementById('historyEmpty');
+  const historyHandle = document.getElementById('historyHandle'), historyDrawer = document.getElementById('historyDrawer'), historyOverlay = document.getElementById('historyOverlay'), closeHistoryBtn = document.getElementById('closeHistory');
+  let toastTimer;
+
+  const showToast = (message, error = false) => {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'show' + (error ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = ''; }, 3000);
+  };
+
+  /* ---------- theme ---------- */
+  const themeToggle = document.getElementById('themeToggle');
+  const applyTheme = (t) => {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(THEME_KEY, t);
+    themeToggle.checked = t === 'light';
+  };
+  const savedTheme = localStorage.getItem(THEME_KEY) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  applyTheme(savedTheme);
+  themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked ? 'light' : 'dark'));
+
+  /* ---------- draft tabs ---------- */
+  let tabCounter = 1;
+  let activeId = 't0';
+  let tabsData = [{ id: 't0', text: '', sentCode: null }];
+
+  function renderTabs() {
+    tabsWrap.querySelectorAll('.tab-btn').forEach(n => n.remove());
+    tabsData.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab-btn' + (t.id === activeId ? ' active' : '');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(t.id === activeId));
+      btn.innerHTML = '<span>Note ' + (i + 1) + '</span>' + (tabsData.length > 1 ? '<span class="tab-close" data-id="' + t.id + '" aria-label="Close draft">&times;</span>' : '');
+      btn.addEventListener('click', (e) => {
+        if (e.target.closest('.tab-close')) return;
+        switchTab(t.id);
+      });
+      tabsWrap.insertBefore(btn, addTabBtn);
+    });
+    tabsWrap.querySelectorAll('.tab-close').forEach(x => {
+      x.addEventListener('click', (e) => { e.stopPropagation(); closeTab(x.dataset.id); });
+    });
+  }
+
+  function showReceiveMode() {
+    receiveMode.hidden = false;
+    sentMode.hidden = true;
+    newBtn.hidden = true;
+  }
+
+  function showSentMode(code) {
+    receiveMode.hidden = true;
+    sentMode.hidden = false;
+    bigCode.textContent = code;
+    newBtn.hidden = false;
+  }
+
+  function switchTab(id) {
+    const cur = tabsData.find(t => t.id === activeId);
+    if (cur) cur.text = text.value;
+    activeId = id;
+    const tab = tabsData.find(t => t.id === id);
+    text.value = tab.text;
+    copy.disabled = !text.value;
+    send.disabled = !text.value;
+    if (tab.sentCode) showSentMode(tab.sentCode); else showReceiveMode();
+    renderTabs();
+  }
+
+  function addTab(initialText) {
+    if (tabsData.length >= MAX_TABS) { showToast('Max ' + MAX_TABS + ' drafts open at once', true); return; }
+    const cur = tabsData.find(t => t.id === activeId);
+    if (cur) cur.text = text.value;
+    const id = 't' + (tabCounter++);
+    tabsData.push({ id, text: initialText || '', sentCode: null });
+    switchTab(id);
+    text.focus();
+  }
+
+  function closeTab(id) {
+    if (tabsData.length <= 1) return;
+    const idx = tabsData.findIndex(t => t.id === id);
+    if (idx === -1) return;
+    tabsData.splice(idx, 1);
+    if (activeId === id) {
+      const next = tabsData[Math.max(0, idx - 1)];
+      switchTab(next.id);
+    } else {
+      renderTabs();
+    }
+  }
+
+  addTabBtn.addEventListener('click', () => addTab(''));
+  newBtn.addEventListener('click', () => addTab(''));
+  renderTabs();
+
+  /* ---------- editor ---------- */
+  text.addEventListener('input', () => {
+    copy.disabled = !text.value;
+    send.disabled = !text.value;
+  });
+
+  copy.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(text.value);
+    showToast('Copied!');
+  });
+
+  copyCode.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(bigCode.textContent);
+    showToast('Code copied!');
+  });
+
+  send.onclick = async () => {
+    if (!text.value) return;
+    send.disabled = true;
+    try {
+      const res = await fetch(API_BASE + '/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.value }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Failed to save', true); send.disabled = false; return; }
+      const activeTab = tabsData.find(t => t.id === activeId);
+      if (activeTab) { activeTab.sentCode = data.code; activeTab.text = text.value; }
+      showSentMode(data.code);
+      showToast('Saved! Code: ' + data.code + ' (expires in 5 min)');
+      addHistoryEntry(data.code, text.value);
+    } catch {
+      showToast('Network error \u2014 check API_BASE / try again', true);
+    }
+    send.disabled = !text.value;
+  };
+
+  codeInput.addEventListener('input', async () => {
+    codeInput.value = codeInput.value.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 3);
+    if (codeInput.value.length === 3) {
+      const code = codeInput.value;
+      codeInput.disabled = true;
+      try {
+        const res = await fetch(API_BASE + '/api/get/' + code);
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || 'Code not found', true);
+        } else {
+          if (text.value) {
+            addTab(data.text);
+          } else {
+            text.value = data.text;
+            const activeTab = tabsData.find(t => t.id === activeId);
+            if (activeTab) activeTab.text = data.text;
+            copy.disabled = false;
+            send.disabled = false;
+          }
+          showToast('Content retrieved!');
+        }
+      } catch {
+        showToast('Network error \u2014 check API_BASE / try again', true);
+      }
+      codeInput.value = '';
+      codeInput.disabled = false;
+    }
+  });
+
+  document.getElementById('about').onclick = () => document.getElementById('aboutDialog').showModal();
+  document.getElementById('close').onclick = () => document.getElementById('aboutDialog').close();
+
+  /* ---------- history drawer ---------- */
+  function openDrawer() {
+    historyDrawer.classList.add('open');
+    historyHandle.classList.add('open');
+    historyOverlay.classList.add('show');
+    historyDrawer.setAttribute('aria-hidden', 'false');
+    historyHandle.setAttribute('aria-expanded', 'true');
+  }
+  function closeDrawer() {
+    historyDrawer.classList.remove('open');
+    historyHandle.classList.remove('open');
+    historyOverlay.classList.remove('show');
+    historyDrawer.setAttribute('aria-hidden', 'true');
+    historyHandle.setAttribute('aria-expanded', 'false');
+  }
+  historyHandle.addEventListener('click', () => historyDrawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  historyOverlay.addEventListener('click', closeDrawer);
+  closeHistoryBtn.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && historyDrawer.classList.contains('open')) closeDrawer(); });
+
+  /* ---------- local history ---------- */
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+  }
+  function saveHistory(list) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 20)));
+  }
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function timeAgo(ts) {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + 'm ago';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ago';
+    const d = Math.floor(h / 24);
+    return d + 'd ago';
+  }
+  function addHistoryEntry(code, noteText) {
+    const list = loadHistory();
+    list.unshift({ code, text: noteText, ts: Date.now() });
+    saveHistory(list);
+    renderHistory();
+  }
+  function loadIntoTab(t) {
+    const cur = tabsData.find(x => x.id === activeId);
+    if (cur && !text.value) {
+      cur.text = t;
+      text.value = t;
+      copy.disabled = false;
+      send.disabled = false;
+      showToast('Loaded into current draft');
+    } else {
+      addTab(t);
+      showToast('Loaded into a new draft tab');
+    }
+  }
+  function renderHistory() {
+    const list = loadHistory();
+    historyList.querySelectorAll('.history-item').forEach(n => n.remove());
+    historyEmpty.style.display = list.length ? 'none' : 'block';
+    list.forEach((item, idx) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'history-item';
+      el.innerHTML = '<span class="h-del" data-idx="' + idx + '" role="button" aria-label="Delete entry">&times;</span>' +
+        '<span class="h-code">' + item.code + '</span>' +
+        '<p class="h-preview">' + escapeHtml(item.text.slice(0, 140)) + '</p>' +
+        '<span class="h-time">' + timeAgo(item.ts) + '</span>';
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.h-del')) return;
+        loadIntoTab(item.text);
+        closeDrawer();
+      });
+      historyList.appendChild(el);
+    });
+    historyList.querySelectorAll('.h-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = Number(btn.dataset.idx);
+        const list = loadHistory();
+        list.splice(idx, 1);
+        saveHistory(list);
+        renderHistory();
+      });
+    });
+  }
+  document.getElementById('clearHistory').addEventListener('click', () => {
+    if (!loadHistory().length) return;
+    if (confirm('Clear all saved note history on this device?')) {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+      showToast('History cleared');
+    }
+  });
+  renderHistory();
+</script>
+</body>
+</html>

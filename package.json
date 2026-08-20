@@ -1,0 +1,13 @@
+{
+  "name": "Brocode?",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo No build step required"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1"
+  }
+}
