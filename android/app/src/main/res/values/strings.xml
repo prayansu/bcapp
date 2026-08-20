@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Brocode?</string>
+    <string name="title_activity_main">Brocode?</string>
+    <string name="package_name">com.shuzers.brocode</string>
+    <string name="custom_url_scheme">com.shuzers.brocode</string>
+</resources>
